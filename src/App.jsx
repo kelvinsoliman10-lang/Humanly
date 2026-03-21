@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   ShieldCheck, 
   Sparkles, 
@@ -32,6 +32,22 @@ function App() {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const [showApp, setShowApp] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
+      if (totalHeight > 0) {
+        const progress = (window.scrollY / totalHeight) * 100;
+        setScrollProgress(progress);
+      } else {
+        setScrollProgress(0); // If no scrollbar, progress is 0
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const handleFileSelect = async (selectedFile) => {
     setFile(selectedFile);
@@ -150,8 +166,8 @@ function App() {
                   src="/logo.png" 
                   alt="Humanly" 
                   style={{ 
-                    height: '350px', 
-                    filter: 'drop-shadow(0 0 50px rgba(255,255,255,0.15))' 
+                    height: '450px', 
+                    filter: 'drop-shadow(0 0 60px rgba(255,255,255,0.2))' 
                   }} 
                 />
               </motion.div>
@@ -195,11 +211,34 @@ function App() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.8 }}
-                className="landing-footer-badges"
+                className="scrolling-bar"
               >
-                <div className="l-badge">PUBLIC BETA</div>
-                <div className="l-badge">100% FREE</div>
-                <div className="l-badge">PRIVATE</div>
+                <div className="scrolling-track">
+                  <span>FREE BETA ACCESS</span>
+                  <span>•</span>
+                  <span>ADVANCED AI DETECTION</span>
+                  <span>•</span>
+                  <span>HUMAN-GRADE REWRITING</span>
+                  <span>•</span>
+                  <span>PRIVACY FIRST</span>
+                  <span>•</span>
+                  <span>100% FREE</span>
+                  <span>•</span>
+                  <span>HUMANLY.AI</span>
+                  {/* Duplicate for seamless loop */}
+                  <span>•</span>
+                  <span>FREE BETA ACCESS</span>
+                  <span>•</span>
+                  <span>ADVANCED AI DETECTION</span>
+                  <span>•</span>
+                  <span>HUMAN-GRADE REWRITING</span>
+                  <span>•</span>
+                  <span>PRIVACY FIRST</span>
+                  <span>•</span>
+                  <span>100% FREE</span>
+                  <span>•</span>
+                  <span>HUMANLY.AI</span>
+                </div>
               </motion.div>
             </div>
           </motion.div>
