@@ -165,8 +165,8 @@ function App() {
                 <img 
                   src="/logo.png" 
                   alt="Humanly" 
+                  className="landing-img"
                   style={{ 
-                    height: '450px', 
                     filter: 'drop-shadow(0 0 80px rgba(255,255,255,0.2))',
                     transition: 'all 0.8s ease'
                   }} 
@@ -274,7 +274,7 @@ function App() {
 
                 <div className="logo-container" onClick={reset}>
                   <div className="logo-icon" style={{ background: 'none', padding: 0, boxShadow: 'none' }}>
-                    <img src="/logo.png" alt="Humanly" style={{ height: '120px', objectFit: 'contain' }} />
+                    <img src="/logo.png" alt="Humanly" className="nav-logo-img" />
                   </div>
                   <div className="brand-info">
                     <span className="logo-text">Humanly</span>
