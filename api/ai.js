@@ -25,8 +25,7 @@ export default async function handler(req, res) {
     }
 
     // --- PRIORIDAD 1: GEMINI 1.5 FLASH (SI HAY API KEY) ---
-    if (GEMINI_API_KEY && GEMINI_API_KEY !== 'TU_API_KEY_AQUI') {
-      console.log("Using Gemini 1.5 Flash...");
+    if (GEMINI_API_KEY && GEMINI_API_KEY !== 'TU_API_KEY_AQUI' && GEMINI_API_KEY.startsWith('AIza')) {
       const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
       
       const geminiResponse = await fetch(geminiUrl, {
@@ -34,18 +33,20 @@ export default async function handler(req, res) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{
-            parts: [{ text: `${systemPrompt}\n\nTEXTO:\n${text}` }]
+            parts: [{ text: `${systemPrompt}\n\nTEXTO A PROCESAR:\n${text}` }]
           }]
         })
       });
 
       if (geminiResponse.ok) {
         const data = await geminiResponse.json();
-        const responseText = data.candidates[0].content.parts[0].text.trim();
-        return res.status(200).json({ response: responseText });
-      } else {
-        console.error("Gemini failed, falling back to Cloudflare...");
+        if (data.candidates && data.candidates[0].content) {
+          const responseText = data.candidates[0].content.parts[0].text.trim();
+          res.setHeader('X-AI-Engine', 'Gemini-1.5-Flash');
+          return res.status(200).json({ response: responseText, engine: 'gemini' });
+        }
       }
+      console.warn("Gemini failing or empty response, falling back...");
     }
 
     // --- PRIORIDAD 2: CLOUDFLARE LLAMA 3.1 (FALLBACK) ---
@@ -76,7 +77,8 @@ export default async function handler(req, res) {
     }
 
     const result = await cfResponse.json();
-    return res.status(200).json({ response: result.result.response });
+    res.setHeader('X-AI-Engine', 'Cloudflare-Llama-3.1');
+    return res.status(200).json({ response: result.result.response, engine: 'cloudflare' });
 
   } catch (error) {
     console.error('API Error:', error);
