@@ -74,11 +74,11 @@ function App() {
         setResult(localDetect(contentToAnalyze));
       }
       
-      setIsScanning(false);
     } catch (err) {
       console.error("File processing error:", err);
       setError(err.message || "Error al procesar el archivo.");
       setFile(null);
+    } finally {
       setIsScanning(false);
     }
   };

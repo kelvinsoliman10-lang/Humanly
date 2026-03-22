@@ -8,14 +8,21 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
 export const extractTextFromImage = async (file) => {
   if (typeof Tesseract === 'undefined') {
-    throw new Error('El motor de OCR no está listo. Por favor, recarga la página.');
+    throw new Error('El motor de OCR no está listo. Por favor, verifica tu conexión a internet.');
   }
   
-  const result = await Tesseract.recognize(file, 'spa+eng', {
-    logger: m => console.log('OCR Progress:', m)
-  });
-  
-  return result.data.text;
+  try {
+    const worker = await Tesseract.createWorker('spa+eng', 1, {
+      logger: m => console.log('OCR:', m.status, Math.round(m.progress * 100) + '%')
+    });
+    
+    const { data: { text } } = await worker.recognize(file);
+    await worker.terminate();
+    return text;
+  } catch (error) {
+    console.error('Tesseract Error:', error);
+    throw new Error('Error al leer la imagen. Intenta de nuevo.');
+  }
 };
 
 export const extractTextFromPDF = async (file) => {
@@ -40,10 +47,12 @@ export const extractTextFromPDF = async (file) => {
       fullText += pageText + '\n';
     }
     
-    // Fallback to OCR if no text found or if text is too sparse
-    if (fullText.trim().length < 20 && typeof Tesseract !== 'undefined') {
-      console.log('PDF without text, trying OCR...');
+    // Use OCR if text is suspicious/missing
+    if (fullText.trim().length < 50 && typeof Tesseract !== 'undefined') {
+      console.log('PDF looks like a scan, using OCR fallback...');
       let ocrText = '';
+      const worker = await Tesseract.createWorker('spa+eng');
+      
       for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
         const viewport = page.getViewport({ scale: 2.0 });
@@ -54,17 +63,19 @@ export const extractTextFromPDF = async (file) => {
         
         await page.render({ canvasContext: context, viewport }).promise;
         const pageImg = canvas.toDataURL('image/png');
-        const pageResult = await Tesseract.recognize(pageImg, 'spa+eng');
-        ocrText += pageResult.data.text + '\n';
+        const { data: { text } } = await worker.recognize(pageImg);
+        ocrText += text + '\n';
       }
+      
+      await worker.terminate();
       return ocrText;
     }
     
-    if (!fullText.trim()) throw new Error('El PDF no contiene texto extraíble.');
+    if (!fullText.trim()) throw new Error('Contenido no detectable.');
     return fullText;
   } catch (error) {
     console.error('PDF Extraction Error:', error);
-    throw new Error(`Error en PDF: ${error.message || 'Archivo corrupto o no compatible'}`);
+    throw new Error(`Error en PDF: ${error.message}`);
   }
 };
 
