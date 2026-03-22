@@ -348,6 +348,19 @@ function App() {
                         <div className="result-content custom-scrollbar" style={{ maxHeight: '300px', overflowY: 'auto' }}>
                           {humanizedText}
                         </div>
+                        <div className="ai-disclaimer" style={{ 
+                          fontSize: '0.7rem', 
+                          color: 'rgba(255,255,255,0.3)', 
+                          marginTop: '0.8rem',
+                          paddingTop: '0.8rem',
+                          borderTop: '1px solid rgba(255,255,255,0.05)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.4rem'
+                        }}>
+                          <AlertCircle size={10} />
+                          <span>La IA puede cometer errores. Por favor, revisa el resultado final.</span>
+                        </div>
                       </motion.div>
                     )}
                   </AnimatePresence>

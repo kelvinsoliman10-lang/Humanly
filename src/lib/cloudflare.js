@@ -3,47 +3,30 @@
  * Uses Llama-3-8B-Instruct for high-volume free processing
  */
 
-const ACCOUNT_ID = import.meta.env.VITE_CLOUDFLARE_ACCOUNT_ID;
-const API_TOKEN = import.meta.env.VITE_CLOUDFLARE_API_TOKEN;
+const fetchAI = async (action, text) => {
+  try {
+    const response = await fetch('/api/ai', {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ action, text })
+    });
 
-const runAI = async (prompt, systemPrompt = "You are a helpful assistant.") => {
-  if (!ACCOUNT_ID || !API_TOKEN) {
-    throw new Error("Credenciales de Cloudflare no configuradas.");
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.response;
+  } catch (error) {
+    console.error("AI Proxy Error:", error);
+    throw error;
   }
-
-  const model = "@cf/meta/llama-3-8b-instruct";
-  const url = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/ai/run/${model}`;
-
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${API_TOKEN}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: prompt }
-      ]
-    })
-  });
-
-  if (!response.ok) {
-    const err = await response.text();
-    console.error("Cloudflare Error:", err);
-    throw new Error("Error en la IA de Cloudflare.");
-  }
-
-  const result = await response.json();
-  return result.result.response;
 };
 
 export const detectAI = async (text) => {
-  const systemPrompt = `Analyze the text and determine the probability (0-100%) that it was AI-generated.
-  Consider structure, vocabulary, and common GPT patterns.
-  Return ONLY a JSON object: {"score": number, "analysis": "string", "suspiciousPhrases": ["string"]}`;
-  
-  const response = await runAI(`Analyze this text: ${text.substring(0, 5000)}`, systemPrompt);
+  const response = await fetchAI('detect', text.substring(0, 5000));
   try {
     const jsonStr = response.match(/\{.*\}/s)?.[0] || response;
     return JSON.parse(jsonStr);
@@ -54,23 +37,9 @@ export const detectAI = async (text) => {
 };
 
 export const humanizeText = async (text) => {
-  const systemPrompt = `You are a professional human writer. 
-  Rewrite the input text to make it sound 100% human and original. 
-  Rules:
-  1. Vary sentence length (mix short and long).
-  2. Use natural, sophisticated Spanish.
-  3. Remove AI clichés like 'En conclusión', 'Por otro lado'.
-  4. Keep the exact same meaning.
-  Return ONLY the humanized text.`;
-
-  return await runAI(`Humanize this text: ${text}`, systemPrompt);
+  return await fetchAI('humanize', text);
 };
 
 export const cleanTranscription = async (text) => {
-  const systemPrompt = `You are a text cleaner. 
-  Fix the following jumbled text extracted from a file (PDF/DOCX). 
-  Remove artifacts, fix broken lines, and ensure it's readable while maintaining the content.
-  Return ONLY the clean text.`;
-
-  return await runAI(`Clean this text: ${text.substring(0, 10000)}`, systemPrompt);
+  return await fetchAI('clean', text.substring(0, 10000));
 };
