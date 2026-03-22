@@ -6,6 +6,18 @@ import JSZip from 'jszip';
 // Configure PDF.js worker using Vite's ?url import for local hosting
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 
+export const extractTextFromImage = async (file) => {
+  if (typeof Tesseract === 'undefined') {
+    throw new Error('El motor de OCR no está listo. Por favor, recarga la página.');
+  }
+  
+  const result = await Tesseract.recognize(file, 'spa+eng', {
+    logger: m => console.log('OCR Progress:', m)
+  });
+  
+  return result.data.text;
+};
+
 export const extractTextFromPDF = async (file) => {
   try {
     const arrayBuffer = await file.arrayBuffer();
@@ -24,11 +36,31 @@ export const extractTextFromPDF = async (file) => {
       const pageText = textContent.items
         .map(item => item.str)
         .join(' ')
-        .replace(/\s+/g, ' '); // Clean excessive spacing
-      fullText += pageText + '\n\n';
+        .replace(/\s+/g, ' '); 
+      fullText += pageText + '\n';
     }
     
-    if (!fullText.trim()) throw new Error('El PDF no contiene texto extraíble (podría ser una imagen).');
+    // Fallback to OCR if no text found or if text is too sparse
+    if (fullText.trim().length < 20 && typeof Tesseract !== 'undefined') {
+      console.log('PDF without text, trying OCR...');
+      let ocrText = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const viewport = page.getViewport({ scale: 2.0 });
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        
+        await page.render({ canvasContext: context, viewport }).promise;
+        const pageImg = canvas.toDataURL('image/png');
+        const pageResult = await Tesseract.recognize(pageImg, 'spa+eng');
+        ocrText += pageResult.data.text + '\n';
+      }
+      return ocrText;
+    }
+    
+    if (!fullText.trim()) throw new Error('El PDF no contiene texto extraíble.');
     return fullText;
   } catch (error) {
     console.error('PDF Extraction Error:', error);
@@ -47,10 +79,7 @@ export const extractTextFromPPTX = async (file) => {
   const zip = await JSZip.loadAsync(arrayBuffer);
   let fullText = '';
   
-  // PPTX slides are in ppt/slides/
   const slideFiles = Object.keys(zip.files).filter(name => name.startsWith('ppt/slides/slide') && name.endsWith('.xml'));
-  
-  // Sort slides numerically
   slideFiles.sort((a, b) => {
     const numA = parseInt(a.match(/slide(\d+)\.xml/)[1]);
     const numB = parseInt(b.match(/slide(\d+)\.xml/)[1]);
@@ -59,7 +88,6 @@ export const extractTextFromPPTX = async (file) => {
 
   for (const slidePath of slideFiles) {
     const content = await zip.file(slidePath).async('string');
-    // Simple regex to extract text from <a:t> tags
     const matches = content.match(/<a:t>([^<]*)<\/a:t>/g);
     if (matches) {
       const slideText = matches.map(m => m.replace(/<a:t>|<\/a:t>/g, '')).join(' ');
@@ -80,9 +108,14 @@ export const extractText = async (file) => {
       return await extractTextFromDOCX(file);
     case 'pptx':
       return await extractTextFromPPTX(file);
+    case 'png':
+    case 'jpg':
+    case 'jpeg':
+    case 'webp':
+      return await extractTextFromImage(file);
     case 'txt':
       return await file.text();
     default:
-      throw new Error('Formato de archivo no soportado. Usa PDF, DOCX, PPTX o TXT.');
+      throw new Error('Formato de archivo no soportado. Usa PDF, DOCX, PPTX, TXT o Imágenes.');
   }
 };

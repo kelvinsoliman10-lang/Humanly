@@ -16,7 +16,10 @@ const FileUpload = ({ onFileSelect, selectedFile, onClear, compact = false }) =>
       'application/pdf': ['.pdf'],
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
       'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
-      'text/plain': ['.txt']
+      'text/plain': ['.txt'],
+      'image/png': ['.png'],
+      'image/jpeg': ['.jpg', '.jpeg'],
+      'image/webp': ['.webp']
     },
     multiple: false
   });
@@ -52,7 +55,7 @@ const FileUpload = ({ onFileSelect, selectedFile, onClear, compact = false }) =>
               </div>
               <div className="upload-text">
                 <h3>Suelta tu documento aquí</h3>
-                <p>Soporta PDF, DOCX, PPTX y TXT</p>
+                <p>Soporta PDF, DOCX, TXT e Imágenes (OCR)</p>
               </div>
             </div>
           </motion.div>
