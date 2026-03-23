@@ -63,52 +63,46 @@ export default async function handler(req, res) {
         }
       }
       
-      // SI TODO FALLA, intentamos listar modelos para diagnosticar
-      try {
-        const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${GEMINI_API_KEY}`;
-        const listRes = await fetch(listUrl);
-        const listData = await listRes.json();
-        if (listData.models) {
-          const available = listData.models.map(m => m.name.replace('models/', '')).join(', ');
-          return res.status(404).json({ 
-            error: 'Incompatibilidad de Modelos', 
-            details: `Tu clave solo soporta: ${available}. Por favor repórtame esta lista.` 
-          });
-        }
-      } catch (e) {}
-
-      if (lastError) {
-        return res.status(404).json({ error: 'Gemini Model Error', details: lastError.message });
-      }
+      // SI TODO FALLA o hay error de cuota, intentamos listar modelos o simplemente salimos del bloque
+      // para que el flujo continúe hacia el Fallback de Cloudflare
     }
 
-    // --- PRIORIDAD 2: CLOUDFLARE LLAMA 3.1 (FALLBACK) ---
+    // --- PRIORIDAD 2: CLOUDFLARE LLAMA 3.1 (EL ESCUDO DE RESPALDO) ---
     if (CLOUD_ACCOUNT_ID && CLOUD_API_TOKEN) {
+      console.log("Using Cloudflare Llama 3.1 fallback...");
       const model = "@cf/meta/llama-3.1-8b-instruct";
       const url = `https://api.cloudflare.com/client/v4/accounts/${CLOUD_ACCOUNT_ID}/ai/run/${model}`;
 
-      const cfResponse = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${CLOUD_API_TOKEN}`,
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          messages: [
-            { role: "system", content: systemPrompt },
-            { role: "user", content: text }
-          ]
-        })
-      });
+      try {
+        const cfResponse = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${CLOUD_API_TOKEN}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: text }
+            ]
+          })
+        });
 
-      if (cfResponse.ok) {
-        const result = await cfResponse.json();
-        res.setHeader('X-AI-Engine', 'Cloudflare-Llama-3.1');
-        return res.status(200).json({ response: result.result.response, engine: 'cloudflare' });
+        if (cfResponse.ok) {
+          const result = await cfResponse.json();
+          res.setHeader('X-AI-Engine', 'Cloudflare-Llama-3.1');
+          return res.status(200).json({ response: result.result.response, engine: 'cloudflare' });
+        }
+      } catch (cfErr) {
+        console.error("Cloudflare also failed:", cfErr);
       }
     }
 
-    return res.status(404).json({ error: 'No AI engines available. Please check GEMINI_API_KEY in Vercel settings.' });
+    // Si llegamos aquí y hubo un error de Gemini, lo reportamos detalladamente
+    return res.status(429).json({ 
+      error: 'Límite de Cuota Alcanzado', 
+      details: 'Has agotado tus créditos gratuitos de Gemini en Google. Por favor, configura las claves de Cloudflare en Vercel para activar el respaldo gratuito ilimitado.' 
+    });
 
   } catch (error) {
     console.error('API Error:', error);
