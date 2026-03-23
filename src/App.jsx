@@ -107,22 +107,25 @@ function App() {
     setIsHumanizing(true);
     setError('');
     try {
+      let finalHumanized = '';
       try {
-        const response = await humanizeText(text);
-        setHumanizedText(response);
+        finalHumanized = await humanizeText(text);
+        setHumanizedText(finalHumanized);
       } catch (err) {
-        console.warn("Cloudflare humanizer failed, using local fallback");
-        setHumanizedText(localHumanize(text));
+        console.error("AI API failed:", err);
+        setError("La IA no está disponible en este momento. Revisa tu conexión o clave de API.");
+        return; // Don't proceed to detection if humanization failed
       }
       
       try {
-        const autoResult = await detectAI(humanizedText || text);
+        // Use finalHumanized directly instead of state humanizedText
+        const autoResult = await detectAI(finalHumanized);
         setResult(autoResult);
       } catch (err) {
-        setResult(localDetect(humanizedText || text));
+        console.warn("Detection failed after humanization", err);
       }
     } catch (err) {
-      setError("Error al humanizar.");
+      setError("Error crítico en el proceso.");
     } finally {
       setIsHumanizing(false);
     }
