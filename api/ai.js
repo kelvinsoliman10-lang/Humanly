@@ -27,7 +27,7 @@ export default async function handler(req, res) {
     // --- PRIORIDAD 1: GEMINI 1.5 FLASH (SI HAY API KEY) ---
     if (GEMINI_API_KEY && GEMINI_API_KEY !== 'TU_API_KEY_AQUI' && GEMINI_API_KEY.length > 20) {
       try {
-        const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
+        const geminiUrl = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`;
         
         const geminiResponse = await fetch(geminiUrl, {
           method: "POST",
