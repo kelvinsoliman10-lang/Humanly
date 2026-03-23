@@ -113,8 +113,8 @@ function App() {
         setHumanizedText(finalHumanized);
       } catch (err) {
         console.error("AI API failed:", err);
-        setError("La IA no está disponible en este momento. Revisa tu conexión o clave de API.");
-        return; // Don't proceed to detection if humanization failed
+        setError(err.message || "Error de conexión con la IA.");
+        return; 
       }
       
       try {

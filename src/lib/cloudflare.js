@@ -14,7 +14,8 @@ const fetchAI = async (action, text) => {
     });
 
     if (!response.ok) {
-      throw new Error(`API Error: ${response.status}`);
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.details || errData.error || `API Error: ${response.status}`);
     }
 
     const data = await response.json();
